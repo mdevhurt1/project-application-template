@@ -9,6 +9,9 @@ import argparse
 
 import config
 from example_analysis import ExampleAnalysis
+from template_switch_analysis import TemplateSwitchAnalysis
+from first_reporter_code_share_analysis import FirstReporterAnalysis
+from related_issues_analysis import RelatedIssuesAnalysis
 
 
 def parse_args():
@@ -16,7 +19,7 @@ def parse_args():
     Parses the command line arguments that were provided along
     with the python command. The --feature flag must be provided as
     that determines what analysis to run. Optionally, you can pass in
-    a user and/or a label to run analysis focusing on specific issues.
+    a user, a label and/or an issue to run analysis focusing on specific issues.
     
     You can also add more command line arguments following the pattern
     below.
@@ -35,6 +38,10 @@ def parse_args():
     ap.add_argument('--label', '-l', type=str, required=False,
                     help='Optional parameter for analyses focusing on a specific label')
     
+    # Optional parameter for analyses focusing on a specific issue
+    ap.add_argument('--issue', '-i', type=int, required=False,
+                    help='Optional parameter for analyses focusing on a specific issue')
+    
     return ap.parse_args()
 
 
@@ -48,10 +55,10 @@ config.overwrite_from_args(args)
 if args.feature == 0:
     ExampleAnalysis().run()
 elif args.feature == 1:
-    pass # TODO call first analysis
+    TemplateSwitchAnalysis().run()
 elif args.feature == 2:
-    pass # TODO call second analysis
+    FirstReporterAnalysis().run()
 elif args.feature == 3:
-    pass # TODO call third analysis
+    RelatedIssuesAnalysis().run()
 else:
     print('Need to specify which feature to run with --feature flag.')
