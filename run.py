@@ -61,4 +61,5 @@ elif args.feature == 2:
 elif args.feature == 3:
     RelatedIssuesAnalysis().run()
 else:
-    print('Need to specify which feature to run with --feature flag.')
+    print(f'Unknown feature {args.feature}. Use --feature 1, 2 or 3 '
+          f'(or 0 for the example analysis).')

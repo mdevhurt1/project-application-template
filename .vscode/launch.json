@@ -15,7 +15,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/run.py",
             "console": "integratedTerminal",
-            "args": ["--feature","1","--user","amueller"] 
+            "args": ["--feature","1"] 
         },
         {
             "name": "Run feature 2",
@@ -23,7 +23,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/run.py",
             "console": "integratedTerminal",
-            "args": ["--feature","2"] 
+            "args": ["--feature","2","--label","kind/bug"] 
         },
         {
             "name": "Run feature 3",
@@ -31,7 +31,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/run.py",
             "console": "integratedTerminal",
-            "args": ["--feature","3"] 
+            "args": ["--feature","3","--issue","9191"] 
         },
         {
             "name": "Current File",

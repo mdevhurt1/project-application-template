@@ -3,8 +3,10 @@ Shared console output helpers so every analysis presents its
 question, method and finding in the same format.
 """
 
-from typing import Any, List, Sequence
+import os
+from typing import Any, List, Optional, Sequence
 
+import matplotlib.pyplot as plt
 import pandas as pd
 
 RULE_WIDTH:int = 72
@@ -39,3 +41,23 @@ def print_finding(text:str):
     """
     print(f'Finding: {text}')
     print('=' * RULE_WIDTH + '\n')
+
+
+def fmt(value:Optional[float], spec:str) -> str:
+    """
+    Formats a value for a table cell, or '-' when it is None.
+    """
+    return '-' if value is None else format(value, spec)
+
+
+def save_chart(fig, path:str):
+    """
+    Saves the figure to path, creating its folder if needed, and shows it
+    when a GUI backend is available.
+    """
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    fig.savefig(path, dpi=150)
+    print(f'Chart saved to {path}')
+    # Agg can't open a window (no GUI toolkit or display), so only show when one can
+    if plt.get_backend().lower() != 'agg':
+        plt.show()

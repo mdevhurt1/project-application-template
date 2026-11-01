@@ -197,16 +197,22 @@ def closer_type(issue: Issue, maintainers: Set[str]) -> Optional[str]:
     return 'other'
 
 
+def days(td: Optional[timedelta]) -> Optional[float]:
+    """
+    Returns `td` in days, or None if it is None.
+    """
+    return td.total_seconds() / 86400 if td is not None else None
+
+
 def median_days(timedeltas: Iterable[Optional[timedelta]]) -> Optional[float]:
     """
     Returns the median of `timedeltas` in days, skipping None values.
     Returns None if nothing is left.
     """
-    days: List[float] = [td.total_seconds() / 86400
-                         for td in timedeltas if td is not None]
-    if not days:
+    values: List[float] = [days(td) for td in timedeltas if td is not None]
+    if not values:
         return None
-    return statistics.median(days)
+    return statistics.median(values)
 
 
 def rate(bools: Iterable[Optional[bool]]) -> Optional[float]:

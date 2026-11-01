@@ -11,7 +11,7 @@ from issue_metrics import (closer_type, code_share, comment_count, extract_secti
                            find_maintainers, is_duplicate, median_days,
                            needs_reproduction, rate, time_to_close)
 from model import Issue
-from report import print_intro, print_table, print_finding
+from report import fmt, print_intro, print_table, print_finding, save_chart
 import config
 
 # Label used when --label isn't given.
@@ -164,9 +164,9 @@ class FirstReporterAnalysis:
         print_table(['group', 'n', 'n closed', 'median days to close', 'median comments',
                      'duplicate rate', 'needs-reproduction rate',
                      'closed by reporter', 'closed by maintainer', 'closed by other'],
-                    [[g, f"n={s['n']}", s['closed'], self._fmt(s['median_days'], '.1f'),
-                      self._fmt(s['median_comments'], 'g'), self._fmt(s['duplicate'], '.1%'),
-                      self._fmt(s['needs_repro'], '.1%')]
+                    [[g, f"n={s['n']}", s['closed'], fmt(s['median_days'], '.1f'),
+                      fmt(s['median_comments'], 'g'), fmt(s['duplicate'], '.1%'),
+                      fmt(s['needs_repro'], '.1%')]
                      + [self._closer_cell(s, c) for c in CLOSERS]
                      for g, s in stats.items()])
 
@@ -177,6 +177,9 @@ class FirstReporterAnalysis:
 
         print_finding(self._finding(stats))
 
+        if not any(s['n'] for s in stats.values()):
+            print(f'No issues to group in `{label}`, so there is no chart.')
+            return
         self.plot_groups(label, stats)
 
     def _group_stats(self, issues:List[Issue], maintainers) -> dict:
@@ -196,9 +199,6 @@ class FirstReporterAnalysis:
             'needs_repro': rate(needs_reproduction(i) for i in issues),
             'closers': {c: closers.count(c) for c in CLOSERS},
         }
-
-    def _fmt(self, value:Optional[float], spec:str) -> str:
-        return '-' if value is None else format(value, spec)
 
     def _closer_cell(self, stats:dict, closer:str) -> str:
         """
@@ -250,12 +250,18 @@ class FirstReporterAnalysis:
         names = [f"{g}\n(n={s['n']})" for g, s in stats.items()]
         x = np.arange(len(names))
 
-        days = [s['median_days'] or 0 for s in stats.values()]
-        ax_days.bar(x, days, color='tab:blue')
+        days = [s['median_days'] for s in stats.values()]
+        ax_days.bar(x, [d if d is not None else 0 for d in days], color='tab:blue')
+        # A group with no closed issues has no median; label it instead of showing a 0 bar
+        for k, d in enumerate(days):
+            if d is None:
+                ax_days.annotate('no closed issues', (x[k], 0), xytext=(0, 4),
+                                 textcoords='offset points', ha='center', fontsize=8)
         ax_days.set_xticks(x, names)
         ax_days.set_title('Median time to close')
         ax_days.set_xlabel('Description code share group')
         ax_days.set_ylabel('Median days to close (closed issues only)')
+        ax_days.set_ylim(bottom=0)
 
         width = 0.8 / len(CLOSERS)
         for k, closer in enumerate(CLOSERS):
@@ -272,12 +278,7 @@ class FirstReporterAnalysis:
 
         fig.suptitle(f'First-time reporter issues labeled `{label}`, by code share of the description')
         fig.tight_layout()
-        os.makedirs(os.path.dirname(CHART_PATH), exist_ok=True)
-        fig.savefig(CHART_PATH, dpi=150)
-        print(f'Chart saved to {CHART_PATH}')
-        # Agg can't open a window (no GUI toolkit or display), so only show when one can
-        if plt.get_backend().lower() != 'agg':
-            plt.show()
+        save_chart(fig, CHART_PATH)
 
 
 if __name__ == '__main__':

@@ -1,5 +1,7 @@
 
 import json
+import os
+import sys
 from typing import List
 
 import config
@@ -32,8 +34,13 @@ class DataLoader:
     
     def _load(self):
         """
-        Loads the issues into memory.
+        Loads the issues into memory. Exits with a message if the data
+        file can't be found.
         """
+        if not self.data_path or not os.path.isfile(self.data_path):
+            sys.exit(f'Data file not found: {self.data_path}\n'
+                     f'Set ENPM611_PROJECT_DATA_PATH to the path of poetry_issues_all.json '
+                     f'(see README.md).')
         with open(self.data_path,'r') as fin:
             return [Issue(i) for i in json.load(fin)]
     

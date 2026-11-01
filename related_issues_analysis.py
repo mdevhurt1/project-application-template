@@ -8,9 +8,9 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
 from data_loader import DataLoader
-from issue_metrics import close_date, find_maintainers, median_days, time_to_close
+from issue_metrics import close_date, days, find_maintainers, median_days, time_to_close
 from model import Issue, State
-from report import print_intro, print_table, print_finding
+from report import print_intro, print_table, print_finding, save_chart
 import config
 
 # Example issue shown in the usage message when --issue isn't given.
@@ -136,13 +136,6 @@ def issue_stats(issue:Issue, dates:List[Optional[datetime]],
     }
 
 
-def days(td:Optional[timedelta]) -> Optional[float]:
-    """
-    Returns td in days, or None.
-    """
-    return td.total_seconds() / 86400 if td is not None else None
-
-
 def format_days(td:Optional[timedelta], issue:Issue) -> str:
     """
     Formats td in days, or as 'open' or 'n/a' when it is missing.
@@ -171,7 +164,7 @@ class RelatedIssuesAnalysis:
         """
         if self.ISSUE is None:
             print('Feature 3 needs an issue number. Usage:')
-            print(f'  python run.py --feature 3 --issue <number>')
+            print('  python run.py --feature 3 --issue <number>')
             print(f'For example: python run.py --feature 3 --issue {EXAMPLE_ISSUE}')
             return
 
@@ -179,7 +172,8 @@ class RelatedIssuesAnalysis:
         by_number = {i.number: i for i in issues}
         target = by_number.get(self.ISSUE)
         if target is None:
-            print(f'Issue {self.ISSUE} not found')
+            print(f'Issue #{self.ISSUE} is not in the dataset (pull requests are not '
+                  f'included). For example: python run.py --feature 3 --issue {EXAMPLE_ISSUE}')
             return
 
         outgoing = reference_map(issues)
@@ -327,12 +321,7 @@ class RelatedIssuesAnalysis:
         ax.legend(handles=handles, loc='upper left', bbox_to_anchor=(1.06, 1))
         fig.autofmt_xdate()
         fig.tight_layout()
-        os.makedirs(os.path.dirname(CHART_PATH), exist_ok=True)
-        fig.savefig(CHART_PATH, dpi=150)
-        print(f'Chart saved to {CHART_PATH}')
-        # Agg can't open a window (no GUI toolkit or display), so only show when one can
-        if plt.get_backend().lower() != 'agg':
-            plt.show()
+        save_chart(fig, CHART_PATH)
 
 
 if __name__ == '__main__':

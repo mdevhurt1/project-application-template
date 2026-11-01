@@ -9,7 +9,7 @@ from data_loader import DataLoader
 from issue_metrics import (close_date, code_share, form_sections_text, is_duplicate,
                            median_days, needs_reproduction, rate, time_to_close)
 from model import Issue
-from report import print_intro, print_table, print_finding
+from report import fmt, print_intro, print_table, print_finding, save_chart
 
 # The issue form puts this heading in every body it produces.
 FORM_MARKER = '### Description'
@@ -102,8 +102,8 @@ class TemplateSwitchAnalysis:
                  for name, group in [('before', before), ('after', after)]}
         print_table(['period', 'n', 'n closed', 'median days to close',
                      'duplicate rate', 'needs-reproduction rate'],
-                    [[name, s['n'], s['closed'], self._fmt(s['median_days'], '.1f'),
-                      self._fmt(s['duplicate'], '.1%'), self._fmt(s['needs_repro'], '.1%')]
+                    [[name, s['n'], s['closed'], fmt(s['median_days'], '.1f'),
+                      fmt(s['duplicate'], '.1%'), fmt(s['needs_repro'], '.1%')]
                      for name, s in stats.items()])
 
         print_finding(self._finding(stats['before'], stats['after']))
@@ -122,9 +122,6 @@ class TemplateSwitchAnalysis:
             'duplicate': rate(is_duplicate(i) for i in issues),
             'needs_repro': rate(needs_reproduction(i) for i in issues),
         }
-
-    def _fmt(self, value:Optional[float], spec:str) -> str:
-        return '-' if value is None else format(value, spec)
 
     def _finding(self, before:dict, after:dict) -> str:
         """
@@ -212,12 +209,7 @@ class TemplateSwitchAnalysis:
                  'their quarter; the switch quarter is split in two.',
                  ha='center', fontsize=9, wrap=True)
         fig.tight_layout(rect=(0, 0.04, 1, 1))
-        os.makedirs(os.path.dirname(CHART_PATH), exist_ok=True)
-        fig.savefig(CHART_PATH, dpi=150)
-        print(f'Chart saved to {CHART_PATH}')
-        # Agg can't open a window (no GUI toolkit or display), so only show when one can
-        if plt.get_backend().lower() != 'agg':
-            plt.show()
+        save_chart(fig, CHART_PATH)
 
     def _quarterly_stats(self, df:pd.DataFrame, column:str) -> pd.DataFrame:
         """
