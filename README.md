@@ -1,49 +1,84 @@
-# ENPM611 Project Application Template
+# Poetry Issue Analyses
 
-This is the template for the ENPM611 class project. Use this template in conjunction with the provided data to implement an application that analyzes GitHub issues for the [poetry](https://github.com/python-poetry/poetry/issues) Open Source project and generates interesting insights.
+A command-line application that analyzes the GitHub issues of the [Poetry](https://github.com/python-poetry/poetry/issues) open source project. It loads a JSON export of the issues and runs one of three analyses, each of which prints its findings to the terminal and saves a chart to `output/`:
 
-This application template implements some of the basic functions:
+1. **Template switch:** did moving from a checkbox issue template to a GitHub issue form change how issues are resolved?
+2. **First-time reporters:** within one label, are issues from first-time reporters resolved differently depending on how much of their description is pasted code?
+3. **Related issues:** which issues are linked to a given issue through references, and how do they compare?
 
-- `data_loader.py`: Utility to load the issues from the provided data file and returns the issues in a runtime data structure (e.g., objects)
-- `model.py`: Implements the data model into which the data file is loaded. The data can then be accessed by accessing the fields of objects.
-- `config.py`: Supports configuring the application via the `config.json` file. You can add other configuration paramters to the `config.json` file.
-- `run.py`: This is the module that will be invoked to run your application. Based on the `--feature` command line parameter, one of the three analyses you implemented will be run. You need to extend this module to call other analyses.
+## Requirements
 
-With the utility functions provided, you should focus on implementing creative analyses that generate intersting and insightful insights.
-
-In addition to the utility functions, an example analysis has also been implemented in `example_analysis.py`. It illustrates how to use the provided utility functions and how to produce output.
+- Python 3.12 (tested on 3.12.3)
+- The dependencies in `requirements.txt`:
+  - `python-dateutil`
+  - `pandas`
+  - `matplotlib`
 
 ## Setup
 
-To get started, your team should create a fork of this repository. Then, every team member should clone your repository to their local computer. 
-
-
-### Install dependencies
-
-In the root directory of the application, create a virtual environment, activate that environment, and install the dependencies like so:
+Clone the repository and navigate into it:
 
 ```
+git clone git@github.com:mdevhurt1/project-application-template.git
+cd project-application-template
+```
+
+Create and activate a virtual environment, then install the dependencies:
+
+```
+python3 -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### Download and configure the data file
+## Dataset
 
-Download the data file (in `json` format) from the project assignment in Canvas and update the `config.json` with the path to the file. Note, you can also specify an environment variable by the same name as the config setting (`ENPM611_PROJECT_DATA_PATH`) to avoid committing your personal path to the repository.
-
-
-### Run an analysis
-
-With everything set up, you should be able to run the existing example analysis:
+Download `poetry_issues_all.json` from the project assignment in Canvas. Then point the application at it by setting the `ENPM611_PROJECT_DATA_PATH` environment variable:
 
 ```
-python run.py --feature 0
+export ENPM611_PROJECT_DATA_PATH=/path/to/poetry_issues_all.json      # macOS / Linux
+$env:ENPM611_PROJECT_DATA_PATH = "C:\path\to\poetry_issues_all.json"  # Windows PowerShell
 ```
 
-That will output basic information about the issues to the command line.
+or updating config.json `ENPM611_PROJECT_DATA_PATH` to point to the dataset path.
 
+The environment variable takes precedence over the `ENPM611_PROJECT_DATA_PATH` entry in `config.json`. Use the variable rather than editing `config.json` to avoid committing your personal path. The dataset itself is gitignored and must not be committed.
 
-## VSCode run configuration
+## Running the analyses
 
-To make the application easier to debug, runtime configurations are provided to run each of the analyses you are implementing. When you click on the run button in the left-hand side toolbar, you can select to run one of the three analyses or run the file you are currently viewing. That makes debugging a little easier. This run configuration is specified in the `.vscode/launch.json` if you want to modify it.
+Run every command from the repository root with the virtual environment active. Each feature is selected with `--feature` (`-f`):
 
-The `.vscode/settings.json` also customizes the VSCode user interface sligthly to make navigation and debugging easier. But that is a matter of preference and can be turned off by removing the appropriate settings.
+| Feature | Command | Options |
+| --- | --- | --- |
+| 1. Template switch | `python run.py --feature 1` | None |
+| 2. First-time reporters | `python run.py --feature 2 [--label <label>]` | `--label` (`-l`), default `kind/bug` |
+| 3. Related issues | `python run.py --feature 3 --issue <number>` | `--issue` (`-i`), required, no default |
+
+### Feature 1: template switch
+
+```
+python run.py --feature 1
+```
+
+Takes no options. The chart is saved to `output/f1_code_share.png`.
+
+### Feature 2: first-time reporters
+
+```
+python run.py --feature 2
+python run.py --feature 2 --label kind/feature
+```
+
+`--label` picks the issue label to analyze. Without it, the analysis uses `kind/bug` and says so. If the label isn't in the data, it prints the available labels and stops. The chart is saved to `output/f2_code_share_groups.png`.
+
+### Feature 3: related issues
+
+```
+python run.py --feature 3 --issue 9191
+```
+
+`--issue` is the number of the issue to analyze. It has no default: without it, the command prints a usage message and stops. The chart is saved to `output/f3_related_issues.png`.
+
+### Example analysis
+
+`python run.py --feature 0` runs the example analysis that came with the course template. It prints basic information about the issues and accepts an optional `--user` (`-u`).
