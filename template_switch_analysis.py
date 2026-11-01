@@ -24,6 +24,7 @@ class TemplateSwitchAnalysis:
     change what reports contain and how they're resolved?
     """
 
+
     def run(self):
         """
         Starting point for this analysis.
