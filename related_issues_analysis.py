@@ -149,6 +149,27 @@ def format_days(td:Optional[timedelta], issue:Issue) -> str:
     return f'{days(td):.1f}'
 
 
+def close_status(issue:Issue) -> str:
+    """
+    Returns 'open', 'closed' or 'unknown'. Unknown means the issue is
+    closed but has no dated closed event (the dataset only keeps the
+    first 30 events of an issue), so we can't say when it closed.
+    """
+    if issue.state == State.open:
+        return 'open'
+    return 'closed' if close_date(issue) is not None else 'unknown'
+
+
+def format_time_to_close(issue:Issue, td:Optional[timedelta]) -> str:
+    """
+    Formats the days to close of issue, or says why there is no number.
+    """
+    status = close_status(issue)
+    if status == 'closed':
+        return f'{days(td):.1f}'
+    return 'open' if status == 'open' else 'closed, date unknown'
+
+
 class RelatedIssuesAnalysis:
     """
     Given an issue, which issues are related to it through references or
@@ -220,35 +241,55 @@ class RelatedIssuesAnalysis:
         def row(issue:Issue, link:str, s:dict) -> list:
             return [f'#{issue.number}', link, issue.state.value, s['refs'],
                     s['first_ref'].date().isoformat() if s['first_ref'] else 'n/a',
-                    format_days(s['time_to_close'], issue),
+                    format_time_to_close(issue, s['time_to_close']),
                     format_days(s['ref_to_close'], issue),
                     s['participants'], s['insiders'], issue.title]
+
+        print('Columns:')
+        print('  issue            issue number')
+        print('  link             target, or how the issue relates to it: outgoing (the target '
+              'references it), incoming (it references the target) or both')
+        print('  state            open or closed')
+        print('  refs             titles, bodies and comments that link the issue and the target '
+              '(for the target, all of them)')
+        print('  first ref        date of the earliest of those references')
+        print('  days to close    days from creation to the close; "open" if still open, '
+              '"closed, date unknown" if closed but the data has no close date (it keeps '
+              'only the first 30 events of each issue)')
+        print('  ref to close     days from the first ref to the close, negative when the '
+              'reference came after the close; "n/a" when either date is missing')
+        print('  people           distinct commenters')
+        print('  reporter/maint.  how many of those commenters are the reporter or a maintainer')
+        print('  title            issue title\n')
 
         print_table(['issue', 'link', 'state', 'refs', 'first ref', 'days to close',
                      'ref to close', 'people', 'reporter/maint.', 'title'],
                     [row(target, 'target', target_stats)]
                     + [row(by_number[n], related[n], stats[n]) for n in sorted(related)])
-        print('refs: titles, bodies and comments that link the issue and the target '
-              '(for the target, all of them). first ref: date of the earliest. '
-              'ref to close: days from the first ref to the close, negative when the '
-              'reference came after the close. people: distinct commenters; '
-              'reporter/maint.: how many of them are the reporter or a maintainer.\n')
 
-        print_finding(self.finding(target, target_stats, related, stats))
-        self.plot(target, target_stats, related, stats, by_number)
+        print_finding(self.finding(target, target_stats, related, stats, by_number))
+        # Open issues are measured up to the newest date in the data, not today
+        as_of = max((d for i in issues for d in (i.created_date, i.updated_date) if d is not None),
+                    default=None)
+        self.plot(target, target_stats, related, stats, by_number, as_of)
 
     def finding(self, target:Issue, target_stats:dict, related:Dict[int, str],
-                stats:Dict[int, dict]) -> str:
+                stats:Dict[int, dict], by_number:Dict[int, Issue]) -> str:
         """
         Summarizes how the related issues compare to the target.
         """
-        closed = [n for n in related if stats[n]['time_to_close'] is not None]
-        still_open = sum(1 for n in related if stats[n]['time_to_close'] is None)
-        if target_stats['time_to_close'] is not None:
+        status = {n: close_status(by_number[n]) for n in related}
+        closed = [n for n in related if status[n] == 'closed']
+        n_open = sum(1 for s in status.values() if s == 'open')
+        n_unknown = sum(1 for s in status.values() if s == 'unknown')
+        target_status = close_status(target)
+        if target_status == 'closed':
             text = f'Issue #{target.number} closed after {days(target_stats["time_to_close"]):.1f} days. '
+        elif target_status == 'open':
+            text = f'Issue #{target.number} is still open. '
         else:
-            text = f'Issue #{target.number} has no close date ({format_days(None, target)}). '
-        text += f'{len(closed)} of the {len(related)} related issues are closed'
+            text = f'Issue #{target.number} is closed, but its close date is unknown. '
+        text += f'{len(closed)} of the {len(related)} related issues are closed with a known date'
         if closed:
             ttc = median_days(stats[n]['time_to_close'] for n in closed)
             text += f', with a median time to close of {ttc:.1f} days'
@@ -261,17 +302,26 @@ class RelatedIssuesAnalysis:
                 if after:
                     text += f'. {after} of them were first linked only after they had closed'
         text += '.'
-        if still_open:
-            text += f' The other {still_open} are open or have no close date.'
+        rest = []
+        if n_open:
+            rest.append(f'{n_open} {"is" if n_open == 1 else "are"} open')
+        if n_unknown:
+            rest.append(f'{n_unknown} {"is" if n_unknown == 1 else "are"} closed with an '
+                        f'unknown close date')
+        if rest:
+            text += ' Of the others, ' + ' and '.join(rest) + '.'
         return text
 
     def plot(self, target:Issue, target_stats:dict, related:Dict[int, str],
-             stats:Dict[int, dict], by_number:Dict[int, Issue]):
+             stats:Dict[int, dict], by_number:Dict[int, Issue], as_of:Optional[datetime]):
         """
         Plots a timeline with one bar per issue, from creation to close,
         and a marker at its first reference. The target's lifespan is
-        shaded behind the bars. Issues still open (or with no close date)
-        run to the right edge.
+        shaded behind the bars. Issues still open run to the right edge as
+        a dotted bar, labelled with the days open so far (up to as_of) and a
+        '+'. Closed issues without a close date run to the edge as a
+        dash-dot bar and end in a '?'. The shading is labelled open only
+        when the target is open.
         """
         rows = [(target, 'target', target_stats)] \
             + [(by_number[n], related[n], stats[n]) for n in sorted(related)]
@@ -287,43 +337,65 @@ class RelatedIssuesAnalysis:
 
         fig, ax = plt.subplots(figsize=(12, max(3.5, 1.5 + 0.4 * len(rows))))
         closed = close_date(target)
-        ax.axvspan(target.created_date, closed or edge, color='grey', alpha=0.15)
+        target_status = close_status(target)
+        ax.axvspan(target.created_date, closed or edge, color='grey', alpha=0.15,
+                   hatch='//' if target_status == 'unknown' else None)
         if closed is not None:
             ax.axvline(closed, color='black', linestyle='--', linewidth=1)
         for y, (issue, link, s) in enumerate(rows):
             end = close_date(issue)
+            status = close_status(issue)
             ax.hlines(y, issue.created_date, end or edge, colors=colors[link], linewidth=6,
-                      linestyles='solid' if end else 'dotted')
+                      linestyles={'closed': 'solid', 'open': 'dotted', 'unknown': 'dashdot'}[status])
             # Most bars are a day or two long, too short to see, so mark both ends
             ax.plot(issue.created_date, y, marker='o', color=colors[link], markersize=6)
             if end is not None:
                 ax.plot(end, y, marker='|', color=colors[link], markersize=12, markeredgewidth=2)
+                label = format_time_to_close(issue, s['time_to_close'])
+            elif status == 'open':
+                label = f'{days(as_of - issue.created_date):.1f}+' if as_of is not None else ''
+            else:
+                ax.plot(edge, y, marker='$?$', color=colors[link], markersize=10,
+                        clip_on=False)
+                label = ''
             if s['first_ref'] is not None:
                 ax.plot(s['first_ref'], y, marker='D', color='red', markerfacecolor='none',
                         markersize=8, markeredgewidth=1.5)
-            ax.annotate(format_days(s['time_to_close'], issue), (end or edge, y),
-                        xytext=(6, 0), textcoords='offset points', va='center', fontsize=8)
+            ax.annotate(label, (end or edge, y), xytext=(6, 0), textcoords='offset points',
+                        va='center', fontsize=8)
 
         ax.set_yticks(range(len(rows)), [f'#{issue.number}' for issue, _, _ in rows])
         ax.invert_yaxis()
         ax.set_xlim(right=edge)
         ax.set_title(f'Issues related to #{target.number}: lifespan and first reference')
-        ax.set_xlabel('Date (labels at bar ends: days to close)')
+        ax.set_xlabel('Date (labels at bar ends: days to close, or days open so far with +)')
         ax.set_ylabel('Issue')
         handles = [Line2D([], [], color=c, linewidth=6, label=l) for l, c in colors.items()
                    if l == 'target' or l in related.values()]
-        handles += [Line2D([], [], color='grey', linewidth=6, linestyle='dotted',
-                           label='open or no close date'),
-                    Line2D([], [], color='grey', marker='o', linestyle='', label='created'),
-                    Line2D([], [], color='grey', marker='|', markersize=12, markeredgewidth=2,
-                           linestyle='', label='closed'),
-                    Line2D([], [], color='red', marker='D', markerfacecolor='none',
-                           markeredgewidth=1.5, linestyle='', label='first reference'),
-                    Patch(color='grey', alpha=0.15, label=f'#{target.number} open')]
+        drawn = {close_status(issue) for issue, _, _ in rows}
+        if 'open' in drawn:
+            handles.append(Line2D([], [], color='grey', linewidth=6, linestyle='dotted',
+                                  label='open (label: days so far, +)'))
+        if 'unknown' in drawn:
+            handles.append(Line2D([], [], color='grey', linewidth=6, linestyle='dashdot',
+                                  label='closed, date unknown (ends in ?)'))
+        handles += [Line2D([], [], color='grey', marker='o', linestyle='', label='created')]
+        if 'closed' in drawn:
+            handles.append(Line2D([], [], color='grey', marker='|', markersize=12,
+                                  markeredgewidth=2, linestyle='', label='closed'))
+        handles.append(Line2D([], [], color='red', marker='D', markerfacecolor='none',
+                              markeredgewidth=1.5, linestyle='', label='first reference'))
+        if target_status == 'open':
+            handles.append(Patch(color='grey', alpha=0.15, label=f'#{target.number} open'))
+        elif target_status == 'unknown':
+            handles.append(Patch(facecolor='grey', alpha=0.15, hatch='//',
+                                 label=f'#{target.number} closed, date unknown'))
+        else:
+            handles.append(Patch(color='grey', alpha=0.15, label=f'#{target.number} open (until close)'))
         if closed is not None:
             handles.append(Line2D([], [], color='black', linestyle='--', linewidth=1,
                                   label=f'#{target.number} closed'))
-        ax.legend(handles=handles, loc='upper left', bbox_to_anchor=(1.06, 1))
+        ax.legend(handles=handles, loc='upper left', bbox_to_anchor=(1.06, 1), handlelength=3.5)
         fig.autofmt_xdate()
         fig.tight_layout()
         save_chart(fig, CHART_PATH)
