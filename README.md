@@ -110,9 +110,9 @@ python run.py --feature 3 --issue 9191
 
 ### Method
 
-We first get the target issue passed in the command line. Then we create a reference map that contains for every issue the numbers of the other issues it references. This is the *outgoing* references. We can invert the map to get the *incoming* references, for each issue the numbers of the issues that reference it. The set of issues related to the target issue is then the union of the outgoing and incoming issue maps for that issue.
+The analysis looks for references in each issue's title, body, and comments. It recognizes references written as `#1234`, `python-poetry/poetry#1234`, or `github.com/python-poetry/poetry/issues/1234`. It builds a map of outgoing references for every issue, then inverts that map to find incoming references. An issue is related to the target if either issue references the other. References to issue numbers not included in the dataset are omitted.
 
-For each related issue we find the state, calculate the number of references to the target issue, find the first reference to the target issue, calculate the days to close, calculate the days from the reference to close, calculate the number of distinct commenters, and find the number of reporter/maintainers that have commented.
+For each related issue, the report shows its state, how many texts reference the target, the earliest reference date, and its time to close. It also reports the time from the first reference to close; this can be negative when an issue is referenced after it has closed. The report includes the number of distinct commenters and how many are the issue reporter or a maintainer. The finding summarizes the target's close time and the related issues' close and reference-to-close times. The chart shows each issue's lifespan, creation date, first reference, and close date, with the target's lifespan highlighted.
 
 The finding highlights the time to close of the target, how many related issues are closed, the median time to close for the related issues, and the median time from the first reference to the target to the close of the issue. We plot the issues with a bar for each related issue displaying the lifespan of the issue. We also plot the first reference, issue creation, and issue close. The date the target was closed is displayed as a vertical dashed line.
 
@@ -142,6 +142,8 @@ Analysis 3 drops references to PRs. This can affect the relation graph and resul
 Marcus created the repo and the GitHub project to track work. He made major contributions in issue creation and tracking. He was a core developer for the project code, merging management, and conflict resolution. He contributed several README sections. Marcus created the before and after component diagrams and contributed to the sequence diagram for milestone 1.
 
 ### Nithya Gnanasekar (@Nithya18)
+
+Nithya contributed to project coordination by organizing team sync-ups and facilitating brainstorming sessions to define and refine the project's analyses. She created the Milestone 1 sequence diagram and actively reviewed GitHub issues and pull requests. She also contributed to feature development, implementation, and refinement, collaborating with the team to improve the overall project functionality.
 
 ### Jarred De Azevedo (@Jarred1102)
 
