@@ -8,7 +8,8 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
 from data_loader import DataLoader
-from issue_metrics import close_date, days, find_maintainers, median_days, time_to_close
+from issue_metrics import (close_date, days, find_maintainers, median_days,
+                           remove_code, time_to_close)
 from model import Issue, State
 from report import print_intro, print_table, print_finding, save_chart
 import config
@@ -19,7 +20,7 @@ EXAMPLE_ISSUE = 9191
 # #1234, but not an HTML entity like &#123;, a reference into another
 # repo like owner/repo#12, or a number glued to a word. A full
 # issue python-poetry/poetry#1234 reference does count.
-_HASH_REF = re.compile(r'(?:(?<![&\w])|(?<=python-poetry/poetry))#(\d+)\b')
+_HASH_REF = re.compile(r'(?:(?<![&\w])|(?<=python-poetry/poetry))#(\d+)\b(?!\s+SMP\b)')
 
 # Links to an issue page, e.g. github.com/python-poetry/poetry/issues/1234.
 _URL_REF = re.compile(r'github\.com/python-poetry/poetry/issues/(\d+)\b')
@@ -51,6 +52,9 @@ def find_references(text:str) -> Set[int]:
     Returns the issue numbers referenced in text as #1234 or as a link
     to github.com/python-poetry/poetry/issues/1234.
     """
+    text = remove_code(text)
+    if text is None:
+        return set()
     return {int(n) for pattern in (_HASH_REF, _URL_REF) for n in pattern.findall(text)}
 
 
@@ -187,7 +191,8 @@ class RelatedIssuesAnalysis:
                            '#N or as a github.com/python-poetry/poetry/issues/N link in its '
                            'title, body or comments. Outgoing means the target references it, '
                            'incoming means it references the target. Numbers that are not in '
-                           'the dataset (mostly pull requests) are left out.')
+                           'the dataset (mostly pull requests) are left out. Code blocks and '
+                           'inline code are ignored.')
 
         print(f'Issue #{target.number}: {target.title}')
         if not related:

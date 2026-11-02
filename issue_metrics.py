@@ -10,9 +10,15 @@ from datetime import datetime, timedelta
 from typing import Iterable, List, Optional, Set, Union
 
 from model import Event, Issue, State
+from markdown_it import MarkdownIt
 
 # A fence line: up to 3 spaces of indent, then 3 or more backticks.
 _FENCE = re.compile(r'^ {0,3}(`{3,})')
+
+# Parser for remove_code, built once because construction is not free.
+_MARKDOWN = MarkdownIt()
+_HTML_CODE = re.compile(r'<(pre|code)\b.*?</\1>', re.S | re.I)
+_HTML_TAG = re.compile(r'<[^>]+>')
 
 # Issue-form sections whose text counts as the reporter's own prose.
 FORM_SECTIONS = ('Description', 'Workarounds')
@@ -52,6 +58,35 @@ def code_share(text: Union[str, Issue, None]) -> float:
         else:
             code_chars += len(line)
     return code_chars / len(text)
+
+
+def remove_code(text: Union[str, Issue, None]) -> Optional[str]:
+    """
+    Returns `text` with code removed: fenced and indented code blocks,
+    inline code spans and HTML <pre>/<code> elements. The rest is kept as
+    plain text, with the target of every markdown link added after its
+    text so that issue links still show up. Returns None for None.
+    """
+    text = _text_of(text)
+    if text is None:
+        return None
+
+    parts: List[str] = []
+    for token in _MARKDOWN.parse(text):
+        if token.type == 'inline':
+            for child in token.children or []:
+                if child.type in ('text', 'image'):
+                    parts.append(child.content)
+                elif child.type in ('softbreak', 'hardbreak'):
+                    parts.append('\n')
+                elif child.type == 'link_open':
+                    parts.append(' ' + (child.attrGet('href') or '') + ' ')
+        elif token.type == 'html_block':
+            html = _HTML_CODE.sub('', token.content)
+            parts.append(_HTML_TAG.sub('', html))
+        elif token.type.endswith('_close'):
+            parts.append('\n')
+    return ''.join(parts)
 
 
 def extract_section(text: Union[str, Issue, None], header: str) -> Optional[str]:
