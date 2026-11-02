@@ -158,6 +158,8 @@ Nithya contributed to project coordination by organizing team sync-ups and facil
 
 ### Jarred De Azevedo (@Jarred1102)
 
+Jarred contributed to improving the project's configuration and setup process by implementing .env file support using python-dotenv. He updated run.py to automatically load environment variables, added the required dependencies, and updated the README with setup instructions. He also actively reviewed GitHub issue and approved pull requests.
+
 ## AI Use Disclosure
 
 AI was used in the creation of this repository. Autofill suggestions, chats to further understand how the desired analyses could be approached, tools like [Claude Code](https://claude.com/claude-code) for debugging, development, and review. The authors of the code are responsible for its functionality. If a line of code was committed by a developer, it is expected they can explain that line and why it was written that way. While AI tools were essential to the concise, functional, and fast-paced development in this project, the authors have all contributed their ideas, opinions, and time to the orderly development of this project.
