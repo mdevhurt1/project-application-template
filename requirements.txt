@@ -4,3 +4,4 @@ matplotlib
 markdown-it-py
 tabulate
 python-dotenv
+tabulate
