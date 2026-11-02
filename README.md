@@ -47,7 +47,7 @@ or updating config.json `ENPM611_PROJECT_DATA_PATH` to point to the dataset path
 
 The environment variable takes precedence over the `ENPM611_PROJECT_DATA_PATH` entry in `config.json`. Use the variable rather than editing `config.json` to avoid committing your personal path. The dataset itself is gitignored and must not be committed.
 
-To create an environment variable, navigate to or create a .env file in the same directory as run.py (should be the root) and add "ENPM611_PROJECT_DATA_PATH:path/to/data/file.json". Then, add ".env" to the gitignore file (also in the root directory) so it won't be committed.
+To create an environment variable, navigate to or create a .env file in the same directory as run.py (should be the root) and add `ENPM611_PROJECT_DATA_PATH="path/to/data/file.json"`. Then, add `.env` to the gitignore file (also in the root directory) so it won't be committed.
 
 ## Running the analyses
 
