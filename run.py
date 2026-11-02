@@ -12,7 +12,9 @@ from example_analysis import ExampleAnalysis
 from template_switch_analysis import TemplateSwitchAnalysis
 from first_reporter_code_share_analysis import FirstReporterAnalysis
 from related_issues_analysis import RelatedIssuesAnalysis
+from dotenv import load_dotenv
 
+load_dotenv()
 
 def parse_args():
     """
