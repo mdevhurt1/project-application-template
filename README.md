@@ -13,6 +13,8 @@ A command-line application that analyzes the GitHub issues of the [Poetry](https
   - `python-dateutil`
   - `pandas`
   - `matplotlib`
+  - `markdown-it-py`
+  - `tabulate`
 
 ## Setup
 
